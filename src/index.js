@@ -22,7 +22,17 @@ global.isMac = (process.platform === 'darwin');
 /*  LOCAL CONSTANTS                                  */
 /* ================================================= */
 
-const DATA_FILE = '/settings.json'; // TODO: find key/value or settings storage
+const DEFAULT_SETTINGS = {
+  inputPortID: 0,
+  outputPortID: 0,
+  inputPortName: '',
+  outputPortName: '',
+  channel: 1,
+  mode: 0,
+  deviceID: 0,
+  cuelist: 1,
+  darkMode: false
+};
 
 const TROUBLESHOOTING_GUIDE_URL = 'about:blank'; // TODO
 
@@ -40,6 +50,7 @@ const url = require('url');
 
 global.log = require('npmlog');
 
+const Store = require('electron-store');
 const midi = require('@julusian/midi');
 const msc = require('./midi-show-control');
 
@@ -94,14 +105,13 @@ if (require('electron-squirrel-startup')) {
 app.on('ready', () => {
   updatePortLists();
 
-  restoreDataFile(() => {
-    updateSettingsFromRestart();
+  restoreSettings();
+  updateSettingsFromRestart();
 
-    setupAppMenu();
+  setupAppMenu();
 
-    createMainWindow({
-      darkMode: settings.darkMode
-    });
+  createMainWindow({
+    darkMode: settingsState.darkMode
   });
 });
 
@@ -249,7 +259,7 @@ let menuTemplate = [
 
 function setupAppMenu () {
   // Update the 3rd Menu (Settings) and the 1st SubMenu (Dark Theme)
-  menuTemplate[2].submenu[0].checked = settings.darkMode;
+  menuTemplate[2].submenu[0].checked = settingsState.darkMode;
 
   const menu = Menu.buildFromTemplate(menuTemplate);
   Menu.setApplicationMenu(menu);
@@ -263,7 +273,7 @@ let lightModeBGColor = '#A4A6AA';
 let darkModeBGColor = '#282C33';
 
 function changeDarkMode (enabled) {
-  settings.darkMode = enabled;
+  settingsState.darkMode = enabled;
 
   mainWindow.setBackgroundColor(enabled ? darkModeBGColor : lightModeBGColor);
   mainWindow.setVibrancy(enabled ? 'dark' : 'light');
@@ -274,107 +284,118 @@ function changeDarkMode (enabled) {
 };
 
 /* ================================================= */
-/*  DATA FILE                                        */
+/*  USER SETTINGS STORAGE                            */
 /* ================================================= */
 
-let settings = {
-  inputPortID: 0,
-  outputPortID: 0,
-  inputPortName: '',
-  outputPortName: '',
-  channel: 1,
-  mode: 0,
-  deviceID: 0,
-  cuelist: 1,
-  darkMode: false
+// Initialize the storage module
+const store = new Store();
+
+// This variable will hold the current state of user settings
+let settingsState = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+
+const saveSettings = function () {
+  // Save the current state of settings to storage
+  store.set('settings', settingsState);
+
+  if (DEBUG) log.info('store', 'Settings saved');
 };
 
-const handleCorruption = function (errCode) {
-  let errorMsg = `Unfortunately, the settings file has become corrupt (Code ${errCode}). Please delete and re-install the MIDIsync app.`;
+const restoreSettings = function () {
+  // Get the most recent saved settings from storage
+  let savedSettings = store.get('settings');
 
-  setTimeout(() => {
-    app.quit();
-  }, 1);
+  // Port IDs
+  settingsState.inputPortID = parseInt(savedSettings?.inputPortID) || DEFAULT_SETTINGS.inputPortID;
+  settingsState.outputPortID = parseInt(savedSettings?.outputPortID) || DEFAULT_SETTINGS.outputPortID;
 
-  throw new Error(errorMsg);
+  // Port names
+  settingsState.inputPortName = savedSettings?.inputPortName || DEFAULT_SETTINGS.inputPortName;
+  settingsState.outputPortName = savedSettings?.outputPortName || DEFAULT_SETTINGS.outputPortName;
+
+  // MIDI channel
+  settingsState.channel = parseInt(savedSettings?.channel) || DEFAULT_SETTINGS.channel;
+
+  // App mode
+  settingsState.mode = parseInt(savedSettings?.mode) || DEFAULT_SETTINGS.mode;
+
+  // MIDI Show Control settings
+  settingsState.deviceID = parseInt(savedSettings?.deviceID) || DEFAULT_SETTINGS.deviceID;
+  settingsState.cuelist = parseInt(savedSettings?.cuelist) || DEFAULT_SETTINGS.cuelist;
+
+  // Dark mode boolean
+  settingsState.darkMode = Boolean(savedSettings?.darkMode);
+
+  if (DEBUG) log.info('store', 'Settings restored');
 };
 
-let saveDataFile = function () {
-  let filePath = path.join(__dirname, DATA_FILE);
+const updateSettings = function (newSettings) {
+  // Update settings from window
 
-  let json = {
-    settings
-  };
-  json = JSON.stringify(json);
+  // Port IDs
+  settingsState.inputPortID = parseInt(newSettings?.inputPortID) || DEFAULT_SETTINGS.inputPortID;
+  settingsState.outputPortID = parseInt(newSettings?.outputPortID) || DEFAULT_SETTINGS.outputPortID;
 
-  fs.writeFile(filePath, json, function (err) {
-    if (err) {
-      log.error('fs', err);
-      return handleCorruption(801);
-    } else {
-      if (DEBUG) log.info('fs', 'Data file saved');
+  // Port names
+  let inputPortName = inputPortList[newSettings?.inputPortID];
+  let outputPortName = outputPortList[newSettings?.outputPortID];
+
+  settingsState.inputPortName = inputPortName || '';
+  settingsState.outputPortName = outputPortName || '';
+
+  // MIDI channel
+  settingsState.channel = parseInt(newSettings?.channel) || DEFAULT_SETTINGS.channel;
+
+  // App mode
+  settingsState.mode = parseInt(newSettings?.mode) || DEFAULT_SETTINGS.mode;
+
+  // MIDI Show Control settings
+  settingsState.deviceID = parseInt(newSettings?.deviceID) || DEFAULT_SETTINGS.deviceID;
+  settingsState.cuelist = parseInt(newSettings?.cuelist) || DEFAULT_SETTINGS.cuelist;
+
+  if (DEBUG) log.info('store', 'Settings updated');
+
+  saveSettings();
+  applySettings();
+};
+
+const applySettings = function () {
+  // Update the MIDI input and output ports with the current settings
+  changeInputPort(settingsState.inputPortID);
+  changeOutputPort(settingsState.outputPortID);
+};
+
+const updateSettingsFromRestart = function () {
+  // Locate the saved MIDI input port from its name
+  let newInputPortID = 0;
+
+  inputPortList.forEach(function (name, id) {
+    if (name === settingsState.inputPortName) {
+      newInputPortID = id;
     }
   });
-};
 
-let restoreDataFile = function (callback) {
-  let filePath = path.join(__dirname, DATA_FILE);
+  // Replace the ID in case it has changed
+  settingsState.inputPortID = newInputPortID;
 
-  fs.exists(filePath, function (exists) {
-    if (exists) {
+  // Locate the saved MIDI output port from its name
+  let newOutputPortID = 0;
 
-      fs.readFile(filePath, function (err, json) {
-        if (err) {
-          log.error('fs', err);
-          return handleCorruption(802);
-        } else {
-
-          try {
-            json = JSON.parse(json.toString());
-          } catch(e) {
-            log.error('json', e);
-            return handleCorruption(601);
-          }
-
-          try {
-            settings.inputPortID = parseInt(json.settings.inputPortID);
-            settings.outputPortID = parseInt(json.settings.outputPortID);
-
-            settings.inputPortName = json.settings.inputPortName || '';
-            settings.outputPortName = json.settings.outputPortName || '';
-
-            settings.channel = parseInt(json.settings.channel);
-            settings.mode = parseInt(json.settings.mode);
-
-            settings.deviceID = parseInt(json.settings.deviceID);
-            settings.cuelist = parseInt(json.settings.cuelist);
-
-            settings.darkMode = Boolean(json.settings.darkMode);
-
-            if (!Number.isInteger(settings.inputPortID)) throw new Error('inputPortID not int');
-            if (!Number.isInteger(settings.outputPortID)) throw new Error('outputPortID not int');
-
-            if (!Number.isInteger(settings.channel)) throw new Error('channel not int');
-            if (!Number.isInteger(settings.mode)) throw new Error('mode not int');
-
-            if (!Number.isInteger(settings.deviceID)) throw new Error('deviceID not int');
-            if (!Number.isInteger(settings.cuelist)) throw new Error('cuelist not int');
-          } catch(e) {
-            log.error('json parse', e);
-            return handleCorruption(602);
-          }
-
-          if (DEBUG) log.info('fs', 'Data file restored');
-          callback();
-        }
-      });
-
-    } else {
-      log.info('fs', 'Data file not found: ' + DATA_FILE);
-      saveDataFile();
-      callback();
+  outputPortList.forEach(function (name, id) {
+    if (name === settingsState.outputPortName) {
+      newOutputPortID = id;
     }
   });
+
+  // Replace the ID in case it has changed
+  settingsState.outputPortID = newOutputPortID;
+
+  applySettings();
+};
+
+const updateDarkModeSetting = function (enabled) {
+  settingsState.darkMode = enabled;
+
+  saveSettings();
 };
 
 /* ================================================= */
@@ -390,13 +411,13 @@ var onMIDIMessage = function (time, msg) {
     log.info('MIDI In', {channel, note, velocity});
   }
 
-  var deviceID = settings.deviceID;
+  var deviceID = settingsState.deviceID;
   if (deviceID < 0) deviceID = 'all'; // Broadcast to all Device IDs
   // FUTURE TODO: Implement in UI and client
 
   // Simple -- Cue # 1-127
-  if (settings.mode === 0) {
-    if (channel === settings.channel && note === 0) {
+  if (settingsState.mode === 0) {
+    if (channel === settingsState.channel && note === 0) {
       var cue = velocity;
 
       if (cue > 0) {
@@ -405,7 +426,7 @@ var onMIDIMessage = function (time, msg) {
           commandFormat: 'lighting.general',
           command: 'go',
           cue: cue.toString(),
-          cueList: settings.cuelist.toString()
+          cueList: settingsState.cuelist.toString()
         };
 
         if (DEBUG) {
@@ -419,8 +440,8 @@ var onMIDIMessage = function (time, msg) {
   }
 
   // Advanced -- Cue # 1-999
-  else if (settings.mode === 1) {
-    if (channel === settings.channel && note <= 9 && velocity <= 99) {
+  else if (settingsState.mode === 1) {
+    if (channel === settingsState.channel && note <= 9 && velocity <= 99) {
       var cue = velocity + (note * 100);
 
       if (cue > 0) {
@@ -429,7 +450,7 @@ var onMIDIMessage = function (time, msg) {
           commandFormat: 'lighting.general',
           command: 'go',
           cue: cue.toString(),
-          cueList: settings.cuelist.toString()
+          cueList: settingsState.cuelist.toString()
         };
 
         if (DEBUG) {
@@ -459,10 +480,10 @@ var output = null; // MIDI Output object
 var handleMIDIPortError = function (errCode) {
   let errDesc = `Unknown Error`;
   if (errCode === 301) {
-    let inPortName = settings.inputPortName || '(no port)';
+    let inPortName = settingsState.inputPortName || '(no port)';
     errDesc =  `Can't open connection to the Input MIDI Port "${inPortName}". This is most likely because the MIDI device has been unplugged.`;
   } else if (errCode === 302) {
-    let outPortName = settings.outputPortName || '(no port)';
+    let outPortName = settingsState.outputPortName || '(no port)';
     errDesc =  `Can't open connection to Output MIDI Port "${outPortName}". This is most likely because the MIDI device has been unplugged.`;
   }
 
@@ -594,65 +615,6 @@ var closeAllPorts = function () {
 };
 
 /* ================================================= */
-/*  APP LOGIC                                        */
-/* ================================================= */
-
-var applySettings = function () {
-  changeInputPort(settings.inputPortID);
-  changeOutputPort(settings.outputPortID);
-};
-
-var updateSettingsFromRestart = function () {
-  var newInputPortID = 0;
-  inputPortList.forEach(function (name, id) {
-    if (name === settings.inputPortName) {
-      newInputPortID = id;
-    }
-  });
-  settings.inputPortID = newInputPortID;
-
-  var newOutputPortID = 0;
-  outputPortList.forEach(function (name, id) {
-    if (name === settings.outputPortName) {
-      newOutputPortID = id;
-    }
-  });
-  settings.outputPortID = newOutputPortID;
-
-  applySettings();
-};
-
-var updateSettings = function (newSettings) {
-  // No need to validate with parseInt here,
-  //  it already has been validated in /update-settings
-
-  settings.inputPortID = newSettings.inputPortID;
-  settings.outputPortID = newSettings.outputPortID;
-
-  var inputPortName = inputPortList[newSettings.inputPortID];
-  var outputPortName = outputPortList[newSettings.outputPortID];
-
-  settings.inputPortName = inputPortName;
-  settings.outputPortName = outputPortName;
-
-  settings.channel = newSettings.channel;
-  settings.mode = newSettings.mode;
-
-  settings.deviceID = newSettings.deviceID;
-  settings.cuelist = newSettings.cuelist;
-
-  saveDataFile();
-  applySettings();
-};
-
-var updateDarkModeSetting = function (enabled) {
-  settings.darkMode = enabled;
-
-  saveDataFile();
-  applySettings();
-};
-
-/* ================================================= */
 /*  OLD ROUTES                                       */
 /* ================================================= */
 
@@ -666,7 +628,7 @@ var updateDarkModeSetting = function (enabled) {
     inList.push({
       id: id,
       name: name,
-      selected: (id === settings.inputPortID)
+      selected: (id === settingsState.inputPortID)
     });
   });
 
@@ -676,14 +638,14 @@ var updateDarkModeSetting = function (enabled) {
     outList.push({
       id: id,
       name: name,
-      selected: (id === settings.outputPortID)
+      selected: (id === settingsState.outputPortID)
     });
   });
 
   // Mode array for HTML select element
   var modes = [
-    { id: 0, name: 'Simple', selected: (settings.mode === 0) }, // Cue # 1-127
-    { id: 1, name: 'Advanced', selected: (settings.mode === 1) } // Cue # 1-999
+    { id: 0, name: 'Simple', selected: (settingsState.mode === 0) }, // Cue # 1-127
+    { id: 1, name: 'Advanced', selected: (settingsState.mode === 1) } // Cue # 1-999
   ];
 
   // Success / Error messages
@@ -706,18 +668,18 @@ var updateDarkModeSetting = function (enabled) {
 
   // Render main.html
   res.render('main', {
-    darkMode: settings.darkMode,
+    darkMode: settingsState.darkMode,
     success,
     error,
     secret: secret,
     inputPorts: inList,
     outputPorts: outList,
-    channel: settings.channel,
+    channel: settingsState.channel,
     modes: modes,
-    deviceID: settings.deviceID,
-    cuelist: settings.cuelist,
-    modeSimple: (settings.mode === 0),
-    modeAdvanced: (settings.mode === 1)
+    deviceID: settingsState.deviceID,
+    cuelist: settingsState.cuelist,
+    modeSimple: (settingsState.mode === 0),
+    modeAdvanced: (settingsState.mode === 1)
   });
 });
 

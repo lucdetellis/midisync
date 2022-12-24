@@ -23,6 +23,7 @@
   "license": "GPL-3.0-only",
   "dependencies": {
     "electron-squirrel-startup": "1.0.0",
+    "electron-store": "8.1.0",
     "npmlog": "7.0.1",
     "@julusian/midi": "3.0.0"
   },
