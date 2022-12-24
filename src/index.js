@@ -79,7 +79,7 @@ const {
   dialog
 } = require('electron');
 
-app.setName('MIDIshift');
+app.setName('MIDIsync');
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
@@ -121,7 +121,7 @@ app.on('will-quit', () => {
 
 function createMainWindow (winConfig) {
   let winOptions = {
-    title: 'MIDIshift',
+    title: 'MIDIsync',
     width: 1024,
     height: 768,
     minWidth: 650,
@@ -290,7 +290,7 @@ let settings = {
 };
 
 const handleCorruption = function (errCode) {
-  let errorMsg = `Unfortunately, the settings file has become corrupt (Code ${errCode}). Please delete and re-install the MIDIshift app.`;
+  let errorMsg = `Unfortunately, the settings file has become corrupt (Code ${errCode}). Please delete and re-install the MIDIsync app.`;
 
   setTimeout(() => {
     app.quit();
@@ -378,7 +378,7 @@ let restoreDataFile = function (callback) {
 };
 
 /* ================================================= */
-/*  CORE MIDI SHIFT                                  */
+/*  CORE MIDI PROCESSING                             */
 /* ================================================= */
 
 var onMIDIMessage = function (time, msg) {
@@ -691,7 +691,7 @@ var updateDarkModeSetting = function (enabled) {
   var error = null;
   if (req.query.s == 1) success = true;
 
-  var restartMsg = 'Sorry, try restarting MIDIshift.';
+  var restartMsg = 'Sorry, try restarting MIDIsync.';
   if (req.query.e == 1) error = 'Invalid Input MIDI Port. ' + restartMsg;
   if (req.query.e == 2) error = 'Invalid Ouput MIDI Port. ' + restartMsg;
   if (req.query.e == 6) error = 'Invalid Mode. ' + restartMsg;
