@@ -40,7 +40,7 @@ const url = require('url');
 
 global.log = require('npmlog');
 
-const midi = require('midi');
+const midi = require('@julusian/midi');
 const msc = require('./midi-show-control');
 
 /* ================================================= */

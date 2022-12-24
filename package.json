@@ -24,7 +24,7 @@
   "dependencies": {
     "electron-squirrel-startup": "1.0.0",
     "npmlog": "7.0.1",
-    "midi": "2.0.0"
+    "@julusian/midi": "3.0.0"
   },
   "devDependencies": {
     "@electron-forge/cli": "6.0.4",
