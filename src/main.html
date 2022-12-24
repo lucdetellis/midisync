@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<!--
+  MIDIsync
+  Copyright 2022 Luc DeTellis
+-->
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>MIDIshift</title>
+    <link rel="stylesheet" href="/css/normalize.css" />
+    <link rel="stylesheet" href="/css/main.css" />
+    <link rel="stylesheet" href="/css/dark.css" />
+    <script type="text/javascript" src="/js/util.js"></script>
+    <script type="text/javascript" src="/js/main.js"></script>
+  </head>
+  <body>
+    <center>
+      <h1 class="app-title">
+        MIDI<span>shift</span>
+      </h1>
+
+      <div id="message" style="visibility:hidden;">
+        {{#success}}<span id="success">Settings updated.</span>{{/success}}
+        {{#error}}<span id="error">{{error}}</span>{{/error}}
+        {{^success}}{{^error}}<span>Placeholder</span>{{/error}}{{/success}}
+      </div>
+
+      <form id="update-settings" action="/update-settings" method="post">
+        <input type="hidden" name="secret" value="{{secret}}" />
+        <table class="padding-4px">
+          <tr>
+            <td align="right">Input MIDI Port:</td>
+            <td>
+              <select name="inputPortID" id="inputPortID">
+                {{#inputPorts}}
+                  <option value="{{id}}"{{#selected}} selected{{/selected}}>{{name}}</option>
+                {{/inputPorts}}
+              </select>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="right">Output MIDI Port:</td>
+            <td>
+              <select name="outputPortID" id="outputPortID">
+                {{#outputPorts}}
+                  <option value="{{id}}"{{#selected}} selected{{/selected}}>{{name}}</option>
+                {{/outputPorts}}
+              </select>
+            </td>
+          </tr>
+        </table><br>
+
+        <table class="padding-4px">
+          <tr>
+            <td colspan="2" align="center" style="padding-bottom:8px;">
+              <b>ProPresenter</b>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="right">Channel:</td>
+            <td>
+              <input type="number" id="channel" name="channel" value="{{channel}}" style="width:32px;" min="1" max="16" />
+              <span class="default">1</span>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="right">Mode:</td>
+            <td>
+              <select name="mode" id="mode">
+                {{#modes}}
+                  <option value="{{id}}"{{#selected}} selected{{/selected}}>{{name}}</option>
+                {{/modes}}
+              </select>
+            </td>
+          </tr>
+        </table><br>
+        
+        <table class="padding-4px">
+          <tr>
+            <td colspan="2" align="center" style="padding-bottom:8px;">
+              <b>Lighting</b>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="right">Device ID:</td>
+            <td>
+              <input type="number" id="deviceID" name="deviceID" value="{{deviceID}}" style="width:42px;" min="0" max="111" />
+              <span class="default">0</span>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="right">Cuelist:</td>
+            <td><input type="number" id="cuelist" name="cuelist" value="{{cuelist}}" style="width:60px;" min="1" max="99999" /></td>
+          </tr>
+        </table>
+      </form><br>
+
+      <button id="submit-btn">Apply Settings</button>&nbsp;&nbsp;&nbsp;<button id="cancel-btn">Cancel</button>
+
+      <hr>
+      <p><b>ProPresenter Instructions:</b></p>
+
+      {{#modeSimple}}
+
+        <b>Cue # 1-127</b><br>
+        <table class="padding-4px instruction-box">
+          <tr>
+            <td align="right"><b>Channel:</b></td>
+            <td>{{channel}}</td>
+          </tr>
+          <tr>
+            <td align="right"><b>Note:</b></td>
+            <td>(0)</td>
+          </tr>
+          <tr>
+            <td align="right"><b>Intensity:</b></td>
+            <td>Cue #</td>
+          </tr>
+        </table><br>
+
+      {{/modeSimple}}
+
+      {{#modeAdvanced}}
+
+        <b>Cue # 1-99</b><br>
+        <table class="padding-4px instruction-box">
+          <tr>
+            <td align="right"><b>Channel:</b></td>
+            <td>{{channel}}</td>
+          </tr>
+          <tr>
+            <td align="right"><b>Note:</b></td>
+            <td>(0)</td>
+          </tr>
+          <tr>
+            <td align="right"><b>Intensity:</b></td>
+            <td>Cue #</td>
+          </tr>
+        </table><br>
+
+        <b>Cue # 100-999</b><br>
+        <table class="padding-4px instruction-box">
+          <tr>
+            <td align="right"><b>Channel:</b></td>
+            <td>{{channel}}</td>
+          </tr>
+          <tr>
+            <td align="right"><b>Note:</b></td>
+            <td>First digit of Cue # &ndash; Example: Cue <u>3</u>17 = Note (3)</td>
+          </tr>
+          <tr>
+            <td align="right"><b>Intensity:</b></td>
+            <td>Last two digits of Cue # &ndash; Example: Cue 3<u>17</u> = Intensity 17</td>
+          </tr>
+        </table><br>
+
+      {{/modeAdvanced}}
+
+    </center>
+  </body>
+</html>

@@ -1,0 +1,35 @@
+/*
+  MIDIsync
+  Copyright 2022 Luc DeTellis
+*/
+
+body.dark {
+  background-color: #282C33;
+  color: #DFDFDF;
+}
+body.dark input, body.dark select, body.dark option, body.dark button {
+  color: black;
+}
+
+body.dark h1.app-title span {
+  color: #C0C0C0;
+}
+
+body.dark span#success {
+  color: #0A0;
+}
+body.dark span#error {
+  color: #E00;
+}
+
+body.dark hr {
+  background: #585858;
+}
+
+body.dark .instruction-box {
+  border-color: #7F7F7F;
+}
+
+body.dark .default {
+  color: #999;
+}
