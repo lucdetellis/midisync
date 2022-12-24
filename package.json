@@ -16,7 +16,11 @@
     "name": "Luc DeTellis",
     "email": "luc@ltdinteractive.com"
   },
-  "license": "GPLV3",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lucdetellis/midisync.git"
+  },
+  "license": "GPL-3.0-only",
   "dependencies": {
     "electron-squirrel-startup": "1.0.0",
     "npmlog": "7.0.1",
