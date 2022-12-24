@@ -3,7 +3,7 @@
   "productName": "MIDIsync",
   "version": "0.1.0",
   "description": "Sync lighting cues with slides in ProPresenter",
-  "main": "src/index.js",
+  "main": "src/app.js",
   "scripts": {
     "start": "electron-forge start",
     "package": "electron-forge package",
