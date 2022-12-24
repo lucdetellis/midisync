@@ -7,7 +7,7 @@ global.VERSION = '0.1.0';
 global.BUILD = '221223';
 
 global.DEBUG = false;
-global.DEBUG_OPEN_DEV_TOOLS = true; // DEBUG
+global.DEBUG_OPEN_DEV_TOOLS = false;
 
 // TODO: Success message fast fade out opacity
 // TODO: In new advanced mode: Channel = alias to a cuelist #
@@ -260,6 +260,13 @@ let menuTemplate = [
 function setupAppMenu () {
   // Update the 3rd Menu (Settings) and the 1st SubMenu (Dark Theme)
   menuTemplate[2].submenu[0].checked = settingsState.darkMode;
+
+  // Enable DevTools menu toggle in debug mode
+  if (DEBUG) {
+    menuTemplate.find(m => m.label === 'Settings').submenu.push({
+      role: 'toggleDevTools'
+    });
+  }
 
   const menu = Menu.buildFromTemplate(menuTemplate);
   Menu.setApplicationMenu(menu);
