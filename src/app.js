@@ -187,6 +187,8 @@ function createMainWindow (winConfig) {
 /*  MENU BAR                */
 /* ======================== */
 
+// Ref: https://www.electronjs.org/docs/latest/api/menu#examples
+
 let menuTemplate = [
   // App
   ...(isMac ? [{
@@ -202,17 +204,6 @@ let menuTemplate = [
     ]
   }] : []),
 
-  // Edit
-  {
-    label: 'Edit',
-    submenu: [
-      { role: 'cut' },
-      { role: 'copy' },
-      { role: 'paste' },
-      { role: 'selectall' }
-    ]
-  },
-
   // Settings
   {
     label: 'Settings',
@@ -224,6 +215,24 @@ let menuTemplate = [
           changeDarkMode(menuItem.checked);
         }
       }
+    ]
+  },
+
+  // Edit
+  {
+    label: 'Edit',
+    submenu: [
+      { role: 'cut' },
+      { role: 'copy' },
+      { role: 'paste' },
+      { role: 'selectall' }
+    ]
+  },
+
+  // View
+  {
+    label: 'View',
+    submenu: [
     ]
   },
 
