@@ -149,7 +149,7 @@ function createMainWindow (winConfig) {
   global.mainWindow = new BrowserWindow(winOptions);
 
   // Load the main window html page
-  mainWindow.loadFile(path.join(__dirname, 'main.html'));
+  mainWindow.loadFile(path.join(__dirname, 'window/main.html'));
 
   // Open the DevTools if specified
   if (DEBUG_OPEN_DEV_TOOLS) {
