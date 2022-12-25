@@ -9,14 +9,10 @@ global.BUILD = '221223';
 global.DEBUG = false;
 global.DEBUG_OPEN_DEV_TOOLS = false;
 
-// TODO: Success message fast fade out opacity
-// TODO: In new advanced mode: Channel = alias to a cuelist #
-
-/* ================================================= */
-/*  GLOBAL CONSTANTS                                 */
-/* ================================================= */
-
-global.isMac = (process.platform === 'darwin');
+// TODO: test on arm64
+// TODO: use electron-unhandled?
+// TODO: success message fast fade out opacity
+// TODO: in new advanced mode: channel = alias to a cuelist #
 
 /* ================================================= */
 /*  LOCAL CONSTANTS                                  */
@@ -35,6 +31,8 @@ const DEFAULT_SETTINGS = {
 };
 
 const TROUBLESHOOTING_GUIDE_URL = 'about:blank'; // TODO
+
+const IS_MAC = (process.platform === 'darwin');
 
 /* ================================================= */
 /*  NODE MODULES                                     */
@@ -83,12 +81,7 @@ if (DEBUG) {
 /*  ELECTRON                                         */
 /* ================================================= */
 
-const {
-  app,
-  Menu,
-  BrowserWindow,
-  dialog
-} = require('electron');
+const { app, Menu, BrowserWindow, dialog, ipcMain } = require('electron');
 
 app.setName('MIDIsync');
 
@@ -191,7 +184,7 @@ function createMainWindow (winConfig) {
 
 let menuTemplate = [
   // App
-  ...(isMac ? [{
+  ...(IS_MAC ? [{
     label: app.name,
     submenu: [
       { role: 'about' },
@@ -242,7 +235,7 @@ let menuTemplate = [
     submenu: [
       { role: 'minimize' },
       { role: 'zoom' },
-      ...(isMac ? [
+      ...(IS_MAC ? [
         { type: 'separator' },
         { role: 'front' },
       ] : [
@@ -345,8 +338,6 @@ const restoreSettings = function () {
 };
 
 const updateSettings = function (newSettings) {
-  // Update settings from window
-
   // Port IDs
   settingsState.inputPortID = parseInt(newSettings?.inputPortID) || DEFAULT_SETTINGS.inputPortID;
   settingsState.outputPortID = parseInt(newSettings?.outputPortID) || DEFAULT_SETTINGS.outputPortID;
@@ -370,9 +361,43 @@ const updateSettings = function (newSettings) {
 
   if (DEBUG) log.info('store', 'Settings updated');
 
+  // Save and apply the settings on the back-end
   saveSettings();
   applySettings();
+
+  // Display the settings on the front-end
+  displaySettings();
 };
+
+// Update settings from window
+ipcMain.on('update-settings', (event, newSettings) => {
+  const showError = () => mainWindow.webContents.send('show-message', 'error', message);
+
+  if (newSettings.inputPortID < 0) return showError('invalid-input-port');
+  if (newSettings.outputPortID < 0) return showError('invalid-output-port');
+  if (newSettings.channel < 1 || newSettings.channel > 16) return showError('channel-outofrange');
+  if (newSettings.mode < 0 || newSettings.mode > 1) return showError('invalid-mode');
+  if (newSettings.deviceID < 0 || newSettings.deviceID > 111) return showError('deviceid-outofrange');
+  if (newSettings.cuelist < 1 || newSettings.cuelist > 99999) return showError('cuelist-outofrange');
+
+  updateSettings(newSettings);
+
+  mainWindow.webContents.send('show-message', 'success', 'settings-updated');
+});
+
+const displaySettings = function () {
+  updatePortLists();
+
+  mainWindow.webContents.send('display-settings', settingsState, {
+    inputPortList,
+    outputPortList
+  });
+};
+
+// Window has requested the current settings
+ipcMain.on('request-settings', (event) => {
+  displaySettings();
+});
 
 const applySettings = function () {
   // Update the MIDI input and output ports with the current settings
@@ -418,26 +443,26 @@ const updateDarkModeSetting = function (enabled) {
 /*  CORE MIDI PROCESSING                             */
 /* ================================================= */
 
-var onMIDIMessage = function (time, msg) {
-  var channel = msg[0] - 143;
-  var note = msg[1];
-  var velocity = msg[2];
+const onMIDIMessage = function (time, msg) {
+  let channel = msg[0] - 143;
+  let note = msg[1];
+  let velocity = msg[2];
 
   if (DEBUG) {
     log.info('MIDI In', {channel, note, velocity});
   }
 
-  var deviceID = settingsState.deviceID;
+  let deviceID = settingsState.deviceID;
   if (deviceID < 0) deviceID = 'all'; // Broadcast to all Device IDs
-  // FUTURE TODO: Implement in UI and client
+  // FUTURE TODO: implement in UI and client
 
   // Simple -- Cue # 1-127
   if (settingsState.mode === 0) {
     if (channel === settingsState.channel && note === 0) {
-      var cue = velocity;
+      let cue = velocity;
 
       if (cue > 0) {
-        var messageObj = {
+        let messageObj = {
           deviceId: deviceID,
           commandFormat: 'lighting.general',
           command: 'go',
@@ -449,7 +474,7 @@ var onMIDIMessage = function (time, msg) {
           log.info('MSC Out', messageObj);
         }
 
-        var message = msc.buildMessage(messageObj);
+        let message = msc.buildMessage(messageObj);
         output.sendMessage(message);
       }
     }
@@ -458,10 +483,10 @@ var onMIDIMessage = function (time, msg) {
   // Advanced -- Cue # 1-999
   else if (settingsState.mode === 1) {
     if (channel === settingsState.channel && note <= 9 && velocity <= 99) {
-      var cue = velocity + (note * 100);
+      let cue = velocity + (note * 100);
 
       if (cue > 0) {
-        var messageObj = {
+        let messageObj = {
           deviceId: deviceID,
           commandFormat: 'lighting.general',
           command: 'go',
@@ -473,7 +498,7 @@ var onMIDIMessage = function (time, msg) {
           log.info('MSC Out', messageObj);
         }
 
-        var message = msc.buildMessage(messageObj);
+        let message = msc.buildMessage(messageObj);
         output.sendMessage(message);
       }
     }
@@ -484,26 +509,30 @@ var onMIDIMessage = function (time, msg) {
 /*  MIDI                                             */
 /* ================================================= */
 
-var inputPort = null; // Input port ID (null if no port)
-var inputPortList = []; // String list of all input ports
+let inputPort = null; // Input port ID (null if no port)
+let inputPortList = []; // String list of all input ports
 
-var outputPort = null; // Output port ID (null if no port)
-var outputPortList = []; // String list of all output ports
+let outputPort = null; // Output port ID (null if no port)
+let outputPortList = []; // String list of all output ports
 
-var input = null; // MIDI Input object
-var output = null; // MIDI Output object
+let input = null; // MIDI Input object
+let output = null; // MIDI Output object
 
-var handleMIDIPortError = function (errCode) {
+const handleMIDIPortError = function (errCode) {
   let errDesc = `Unknown Error`;
+
   if (errCode === 301) {
     let inPortName = settingsState.inputPortName || '(no port)';
+
     errDesc =  `Can't open connection to the Input MIDI Port "${inPortName}". This is most likely because the MIDI device has been unplugged.`;
+
   } else if (errCode === 302) {
     let outPortName = settingsState.outputPortName || '(no port)';
+
     errDesc =  `Can't open connection to Output MIDI Port "${outPortName}". This is most likely because the MIDI device has been unplugged.`;
   }
 
-  let resp = dialog.showMessageBox({
+  dialog.showMessageBoxSync({
     type: 'error',
     title: 'MIDI Error',
     buttons: ['OK'],
@@ -512,7 +541,7 @@ var handleMIDIPortError = function (errCode) {
 };
 
 // Update the port list
-var updatePortLists = function () {
+const updatePortLists = function () {
   // Empty port lists
   inputPortList = [];
   outputPortList = [];
@@ -528,12 +557,12 @@ var updatePortLists = function () {
   // Input
 
   // Get the total number of ports
-  var portCount = input.getPortCount();
+  let inputPortCount = input.getPortCount();
 
   // Loop through all the ports
-  for (var id=0; id<portCount; id++) {
+  for (let id = 0; id < inputPortCount; id++) {
     // Get the port name for this port
-    var portName = input.getPortName(id);
+    let portName = input.getPortName(id);
     
     // Add this port to the array as a string (index=portID)
     inputPortList.push(portName);
@@ -542,25 +571,20 @@ var updatePortLists = function () {
   // Output
 
   // Get the total number of ports
-  var portCount = output.getPortCount();
+  let outputPortCount = output.getPortCount();
 
   // Loop through all the ports
-  for (var id=0; id<portCount; id++) {
+  for (let id = 0; id < outputPortCount; id++) {
     // Get the port name for this port
-    var portName = output.getPortName(id);
+    let portName = output.getPortName(id);
     
     // Add this port to the array as a string (index=portID)
     outputPortList.push(portName);
   }
-
-  return {
-    inputPortList,
-    outputPortList
-  };
 };
 
 // Change the input port
-var changeInputPort = function (portID) {
+const changeInputPort = function (portID) {
   if (DEBUG) {
     log.info('MIDI', 'Changing port: IN=' + portID);
   }
@@ -585,12 +609,13 @@ var changeInputPort = function (portID) {
     input.on('message', onMIDIMessage);
   } catch(e) {
     log.error('MIDI', e);
+
     handleMIDIPortError(301);
   }
 }
 
 // Change the output port
-var changeOutputPort = function (portID) {
+const changeOutputPort = function (portID) {
   if (DEBUG) {
     log.info('MIDI', 'Changing port: OUT=' + portID);
   }
@@ -612,11 +637,12 @@ var changeOutputPort = function (portID) {
     outputPort = portID;
   } catch(e) {
     log.error('MIDI', e);
+
     handleMIDIPortError(302);
   }
 }
 
-var closeAllPorts = function () {
+const closeAllPorts = function () {
   // If we currently have an open port,
   if (typeof inputPort === 'number') {
     // close the port.
@@ -629,115 +655,3 @@ var closeAllPorts = function () {
     output.closePort();
   }
 };
-
-/* ================================================= */
-/*  OLD ROUTES                                       */
-/* ================================================= */
-
-/*server.get(['/'+WEBAUTH_SECRET, '/web'], function (req, res, next) {
-  // Get the latest MIDI port lists
-  var portLists = updatePortLists();
-
-  // Match the port name to the current port ID
-  var inList = [];
-  portLists.inputPortList.forEach(function (name, id) {
-    inList.push({
-      id: id,
-      name: name,
-      selected: (id === settingsState.inputPortID)
-    });
-  });
-
-  // Match the port name to the current port ID
-  var outList = [];
-  portLists.outputPortList.forEach(function (name, id) {
-    outList.push({
-      id: id,
-      name: name,
-      selected: (id === settingsState.outputPortID)
-    });
-  });
-
-  // Mode array for HTML select element
-  var modes = [
-    { id: 0, name: 'Simple', selected: (settingsState.mode === 0) }, // Cue # 1-127
-    { id: 1, name: 'Advanced', selected: (settingsState.mode === 1) } // Cue # 1-999
-  ];
-
-  // Success / Error messages
-  var success = false;
-  var error = null;
-  if (req.query.s == 1) success = true;
-
-  var restartMsg = 'Sorry, try restarting MIDIsync.';
-  if (req.query.e == 1) error = 'Invalid Input MIDI Port. ' + restartMsg;
-  if (req.query.e == 2) error = 'Invalid Ouput MIDI Port. ' + restartMsg;
-  if (req.query.e == 6) error = 'Invalid Mode. ' + restartMsg;
-  if (req.query.e == 10) error = 'Invalid input. ' + restartMsg;
-
-  if (req.query.e == 3) error = 'Channel must be between 1 and 16';
-  if (req.query.e == 4) error = 'Device ID must be between 0 and 111';
-  if (req.query.e == 5) error = 'Cuelist must be between 1 and 99999';
-
-  // Secret ('web' if not Electron)
-  var secret = req.path.replace('/', '');
-
-  // Render main.html
-  res.render('main', {
-    darkMode: settingsState.darkMode,
-    success,
-    error,
-    secret: secret,
-    inputPorts: inList,
-    outputPorts: outList,
-    channel: settingsState.channel,
-    modes: modes,
-    deviceID: settingsState.deviceID,
-    cuelist: settingsState.cuelist,
-    modeSimple: (settingsState.mode === 0),
-    modeAdvanced: (settingsState.mode === 1)
-  });
-});
-
-server.post('/update-settings', function (req, res, next) {
-  var urlPath = '/web';
-  if (req.body.secret === WEBAUTH_SECRET) {
-    urlPath = '/'+WEBAUTH_SECRET;
-  }
-
-  try {
-    var inputPortID = parseInt(req.body.inputPortID);
-    var outputPortID = parseInt(req.body.outputPortID);
-    var channel = parseInt(req.body.channel);
-    var mode = parseInt(req.body.mode);
-    var deviceID = parseInt(req.body.deviceID);
-    var cuelist = parseInt(req.body.cuelist);
-
-    if (isNaN(inputPortID)) inputPortID = 0;
-    if (isNaN(outputPortID)) outputPortID = 0;
-    if (isNaN(channel)) channel = 1;
-    if (isNaN(mode)) mode = 0;
-    if (isNaN(deviceID)) deviceID = 0;
-    if (isNaN(cuelist)) cuelist = 1;
-  } catch(e) {
-    return res.redirect(urlPath + '?e=10');
-  }
-
-  if (inputPortID < 0) return res.redirect(urlPath + '?e=1');
-  if (outputPortID < 0) return res.redirect(urlPath + '?e=2');
-  if (channel < 1 || channel > 16) return res.redirect(urlPath + '?e=3');
-  if (mode < 0 || mode > 1) return res.redirect(urlPath + '?e=6');
-  if (deviceID < 0 || deviceID > 111) return res.redirect(urlPath + '?e=4');
-  if (cuelist < 1 || cuelist > 99999) return res.redirect(urlPath + '?e=5');
-
-  updateSettings({
-    inputPortID,
-    outputPortID,
-    channel,
-    mode,
-    deviceID,
-    cuelist
-  });
-
-  res.redirect(urlPath + '?s=1');
-});*/

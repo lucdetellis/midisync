@@ -9,11 +9,13 @@ body {
     'Helvetica Neue', Helvetica, Arial, sans-serif;
   cursor: default;
   user-select: none; /* Prevent selecting */
+}
 
-  /* TODO: remove below if not like original */
-  margin: auto;
-  max-width: 38rem;
-  padding: 2rem;
+body.mode0 .mode1-show {
+  display: none;
+}
+body.mode1 .mode0-show {
+  display: none;
 }
 
 table.padding-2px td, table.padding-2px th {
@@ -25,22 +27,24 @@ table.padding-4px td, table.padding-4px th {
 
 h1.app-title {
   margin-top: 14px;
-  margin-bottom: 8px;
+  margin-bottom: 0px;
 }
 h1.app-title span {
   color: #404040;
 }
 
 div#message {
-  margin-bottom: 6px;
-}
-div#message span {
   font-weight: bold;
+  margin-bottom: 6px;
+  visibility: hidden;
 }
-span#success {
+div#message.show {
+  visibility: visible;
+}
+div#message.success {
   color: green;
 }
-span#error {
+div#message.error {
   color: #E20000;
 }
 
@@ -49,8 +53,8 @@ hr {
   background: #777;
   height: 1px;
   width: 512px;
-  margin-top: 28px;
-  margin-bottom: 24px;
+  margin-top: 20px; /* was 28px */
+  margin-bottom: 20px; /* was 24px */
 }
 
 .instruction-box {

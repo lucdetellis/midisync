@@ -10,50 +10,37 @@
     <link rel="stylesheet" href="./css/normalize.css" />
     <link rel="stylesheet" href="./css/main.css" />
     <link rel="stylesheet" href="./css/dark.css" />
-    <script type="text/javascript" src="./js/util.js"></script>
-    <script type="text/javascript" src="./js/main.js"></script>
+    <script src="./js/util.js"></script>
+    <script src="./js/main.js"></script>
   </head>
-  <body>
+  <body class="mode0">
     <center>
       <h1 class="app-title">
         MIDI<span>sync</span>
       </h1>
 
-      <div id="message" style="visibility:hidden;">
-        {{#success}}<span id="success">Settings updated.</span>{{/success}}
-        {{#error}}<span id="error">{{error}}</span>{{/error}}
-        {{^success}}{{^error}}<span>Placeholder</span>{{/error}}{{/success}}
-      </div>
+      <div id="message">_</div>
 
-      <form id="update-settings" action="/update-settings" method="post">
-        <input type="hidden" name="secret" value="{{secret}}" />
+      <div id="main">
         <table class="padding-4px">
           <tr>
             <td align="right">Input MIDI Port:</td>
             <td>
-              <select name="inputPortID" id="inputPortID">
-                {{#inputPorts}}
-                  <option value="{{id}}"{{#selected}} selected{{/selected}}>{{name}}</option>
-                {{/inputPorts}}
-              </select>
+              <select name="inputPortID" id="inputPortID"></select>
             </td>
           </tr>
 
           <tr>
             <td align="right">Output MIDI Port:</td>
             <td>
-              <select name="outputPortID" id="outputPortID">
-                {{#outputPorts}}
-                  <option value="{{id}}"{{#selected}} selected{{/selected}}>{{name}}</option>
-                {{/outputPorts}}
-              </select>
+              <select name="outputPortID" id="outputPortID"></select>
             </td>
           </tr>
         </table><br>
 
         <table class="padding-4px">
           <tr>
-            <td colspan="2" align="center" style="padding-bottom:8px;">
+            <td colspan="2" align="center" style="padding-bottom: 8px;">
               <b>ProPresenter</b>
             </td>
           </tr>
@@ -61,8 +48,7 @@
           <tr>
             <td align="right">Channel:</td>
             <td>
-              <input type="number" id="channel" name="channel" value="{{channel}}" style="width:32px;" min="1" max="16" />
-              <span class="default">1</span>
+              <input type="number" id="channel" name="channel" style="width: 32px;" min="1" max="16" />
             </td>
           </tr>
 
@@ -70,9 +56,8 @@
             <td align="right">Mode:</td>
             <td>
               <select name="mode" id="mode">
-                {{#modes}}
-                  <option value="{{id}}"{{#selected}} selected{{/selected}}>{{name}}</option>
-                {{/modes}}
+                <option value="0">Simple</option>
+                <option value="1">Advanced</option>
               </select>
             </td>
           </tr>
@@ -80,38 +65,36 @@
         
         <table class="padding-4px">
           <tr>
-            <td colspan="2" align="center" style="padding-bottom:8px;">
-              <b>Lighting</b>
+            <td colspan="2" align="center" style="padding-bottom: 8px;">
+              <b>Lighting Console</b>
             </td>
           </tr>
 
           <tr>
             <td align="right">Device ID:</td>
             <td>
-              <input type="number" id="deviceID" name="deviceID" value="{{deviceID}}" style="width:42px;" min="0" max="111" />
-              <span class="default">0</span>
+              <input type="number" id="deviceID" name="deviceID" style="width: 42px;" min="0" max="111" />
             </td>
           </tr>
 
           <tr>
             <td align="right">Cuelist:</td>
-            <td><input type="number" id="cuelist" name="cuelist" value="{{cuelist}}" style="width:60px;" min="1" max="99999" /></td>
+            <td><input type="number" id="cuelist" name="cuelist" style="width: 60px;" min="1" max="99999" /></td>
           </tr>
         </table>
-      </form><br>
+      </div><br>
 
-      <button id="submit-btn">Apply Settings</button>&nbsp;&nbsp;&nbsp;<button id="cancel-btn">Cancel</button>
+      <button id="send-btn">Apply Settings</button>&nbsp;&nbsp;&nbsp;<button id="cancel-btn">Cancel</button>
 
       <hr>
       <p><b>ProPresenter Instructions:</b></p>
 
-      {{#modeSimple}}
-
+      <div class="mode0-show">
         <b>Cue # 1-127</b><br>
         <table class="padding-4px instruction-box">
           <tr>
             <td align="right"><b>Channel:</b></td>
-            <td>{{channel}}</td>
+            <td class="disp-channel"></td>
           </tr>
           <tr>
             <td align="right"><b>Note:</b></td>
@@ -122,16 +105,14 @@
             <td>Cue #</td>
           </tr>
         </table><br>
+      </div>
 
-      {{/modeSimple}}
-
-      {{#modeAdvanced}}
-
+      <div class="mode1-show">
         <b>Cue # 1-99</b><br>
         <table class="padding-4px instruction-box">
           <tr>
             <td align="right"><b>Channel:</b></td>
-            <td>{{channel}}</td>
+            <td class="disp-channel"></td>
           </tr>
           <tr>
             <td align="right"><b>Note:</b></td>
@@ -147,7 +128,7 @@
         <table class="padding-4px instruction-box">
           <tr>
             <td align="right"><b>Channel:</b></td>
-            <td>{{channel}}</td>
+            <td class="disp-channel"></td>
           </tr>
           <tr>
             <td align="right"><b>Note:</b></td>
@@ -158,8 +139,7 @@
             <td>Last two digits of Cue # &ndash; Example: Cue 3<u>17</u> = Intensity 17</td>
           </tr>
         </table><br>
-
-      {{/modeAdvanced}}
+      </div>
 
     </center>
   </body>
