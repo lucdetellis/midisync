@@ -170,14 +170,14 @@ function createMainWindow (winConfig) {
 
   // Confirm before quit (before main window closes)
   mainWindow.on('close', function (event) {
-    let confirmation = dialog.showMessageBox(this, {
+    let resButtonIndex = dialog.showMessageBoxSync(this, {
       type: 'question',
       title: 'Confirm',
       buttons: ['Quit', 'Cancel'],
       message: 'Are you sure you want to quit?'
     });
 
-    if (confirmation === 1) {
+    if (resButtonIndex === 1) {
       event.preventDefault();
     }
   });
