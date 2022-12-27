@@ -26,9 +26,10 @@ const DEFAULT_SETTINGS = {
   channel: 1,
   mode: 0,
   deviceID: 0,
-  cuelist: 1,
-  darkMode: false
+  cuelist: 1
 };
+
+const WINDOW_BG_COLOR = '#282C33';
 
 const TROUBLESHOOTING_GUIDE_URL = 'about:blank'; // TODO
 
@@ -103,9 +104,7 @@ app.on('ready', function () {
 
   setupAppMenu();
 
-  createMainWindow({
-    darkMode: settingsState.darkMode
-  });
+  createMainWindow();
 });
 
 // Quit when all windows are closed
@@ -122,7 +121,7 @@ app.on('will-quit', function () {
 /*  MAIN WINDOW             */
 /* ======================== */
 
-const createMainWindow = function (winConfig) {
+const createMainWindow = function () {
   let winOptions = {
     title: 'MIDIsync',
     width: 1024,
@@ -134,19 +133,14 @@ const createMainWindow = function (winConfig) {
     acceptFirstMouse: false,
     disableAutoHideCursor: true,
     transparent: false,
-    backgroundColor: lightModeBGColor,
-    darkTheme: false,
-    vibrancy: 'light',
+    backgroundColor: WINDOW_BG_COLOR,
+    darkTheme: true,
+    vibrancy: 'dark',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      devTools: DEBUG
     }
   };
-
-  if (winConfig.darkMode) {
-    winOptions.backgroundColor = darkModeBGColor;
-    winOptions.darkTheme = true;
-    winOptions.vibrancy = 'dark';
-  }
 
   // Create the browser window
   global.mainWindow = new BrowserWindow(winOptions);
@@ -199,13 +193,13 @@ let menuTemplate = [
   {
     label: 'Settings',
     submenu: [
-      {
-        label: 'Dark Theme',
+      /*{
+        label: 'Placeholder Checkbox',
         type: 'checkbox',
         click: (menuItem, browserWindow, event) => {
-          changeDarkMode(menuItem.checked);
+          console.log(menuItem.checked);
         }
-      }
+      }*/
     ]
   },
 
@@ -257,8 +251,8 @@ let menuTemplate = [
 ];
 
 const setupAppMenu = function () {
-  // Update the 3rd Menu (Settings) and the 1st SubMenu (Dark Theme)
-  menuTemplate[2].submenu[0].checked = settingsState.darkMode;
+  // Set the menu item as checked
+  //menuTemplate[2].submenu[0].checked = settingsState.placeholder;
 
   // Enable DevTools menu toggle in debug mode
   if (DEBUG) {
@@ -269,24 +263,6 @@ const setupAppMenu = function () {
 
   const menu = Menu.buildFromTemplate(menuTemplate);
   Menu.setApplicationMenu(menu);
-};
-
-/* ======================== */
-/*  DARK MODE               */
-/* ======================== */
-
-let lightModeBGColor = '#A4A6AA';
-let darkModeBGColor = '#282C33';
-
-const changeDarkMode = function (enabled) {
-  settingsState.darkMode = enabled;
-
-  mainWindow.setBackgroundColor(enabled ? darkModeBGColor : lightModeBGColor);
-  mainWindow.setVibrancy(enabled ? 'dark' : 'light');
-
-  updateDarkModeSetting(enabled);
-
-  mainWindow.reload();
 };
 
 /* ================================================= */
@@ -327,9 +303,6 @@ const restoreSettings = function () {
   // MIDI Show Control settings
   settingsState.deviceID = parseInt(savedSettings?.deviceID) || DEFAULT_SETTINGS.deviceID;
   settingsState.cuelist = parseInt(savedSettings?.cuelist) || DEFAULT_SETTINGS.cuelist;
-
-  // Dark mode boolean
-  settingsState.darkMode = Boolean(savedSettings?.darkMode);
 
   if (DEBUG) log.info('store', 'Settings restored');
 };
@@ -428,12 +401,6 @@ const updateSettingsFromRestart = function () {
   settingsState.outputPortID = newOutputPortID;
 
   applySettings();
-};
-
-const updateDarkModeSetting = function (enabled) {
-  settingsState.darkMode = enabled;
-
-  saveSettings();
 };
 
 /* ================================================= */
