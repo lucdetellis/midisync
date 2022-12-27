@@ -81,7 +81,7 @@ if (DEBUG) {
 /*  ELECTRON                                         */
 /* ================================================= */
 
-const { app, Menu, BrowserWindow, dialog, ipcMain } = require('electron');
+const { app, Menu, BrowserWindow, dialog, ipcMain, shell } = require('electron');
 
 app.setName('MIDIsync');
 
@@ -95,7 +95,7 @@ if (require('electron-squirrel-startup')) {
 /* ======================== */
 
 // Some APIs can only be used after this event occurs
-app.on('ready', () => {
+app.on('ready', function () {
   updatePortLists();
 
   restoreSettings();
@@ -109,12 +109,12 @@ app.on('ready', () => {
 });
 
 // Quit when all windows are closed
-app.on('window-all-closed', () => {
+app.on('window-all-closed', function () {
   app.quit();
 });
 
 // Close all MIDI ports when the app is quit
-app.on('will-quit', () => {
+app.on('will-quit', function () {
   closeAllPorts();
 });
 
@@ -122,7 +122,7 @@ app.on('will-quit', () => {
 /*  MAIN WINDOW             */
 /* ======================== */
 
-function createMainWindow (winConfig) {
+const createMainWindow = function (winConfig) {
   let winOptions = {
     title: 'MIDIsync',
     width: 1024,
@@ -159,8 +159,6 @@ function createMainWindow (winConfig) {
     mainWindow.webContents.openDevTools();
   }
 
-  /* Main Window Listeners */
-
   // Confirm before quit (before main window closes)
   mainWindow.on('close', function (event) {
     let resButtonIndex = dialog.showMessageBoxSync(this, {
@@ -174,7 +172,7 @@ function createMainWindow (winConfig) {
       event.preventDefault();
     }
   });
-}
+};
 
 /* ======================== */
 /*  MENU BAR                */
@@ -251,7 +249,6 @@ let menuTemplate = [
       {
         label: 'Troubleshooting Guide',
         click: async () => {
-          const { shell } = require('electron');
           await shell.openExternal(TROUBLESHOOTING_GUIDE_URL);
         }
       }
@@ -259,7 +256,7 @@ let menuTemplate = [
   }
 ];
 
-function setupAppMenu () {
+const setupAppMenu = function () {
   // Update the 3rd Menu (Settings) and the 1st SubMenu (Dark Theme)
   menuTemplate[2].submenu[0].checked = settingsState.darkMode;
 
@@ -272,7 +269,7 @@ function setupAppMenu () {
 
   const menu = Menu.buildFromTemplate(menuTemplate);
   Menu.setApplicationMenu(menu);
-}
+};
 
 /* ======================== */
 /*  DARK MODE               */
@@ -281,7 +278,7 @@ function setupAppMenu () {
 let lightModeBGColor = '#A4A6AA';
 let darkModeBGColor = '#282C33';
 
-function changeDarkMode (enabled) {
+const changeDarkMode = function (enabled) {
   settingsState.darkMode = enabled;
 
   mainWindow.setBackgroundColor(enabled ? darkModeBGColor : lightModeBGColor);
@@ -370,7 +367,7 @@ const updateSettings = function (newSettings) {
 };
 
 // Update settings from window
-ipcMain.on('update-settings', (event, newSettings) => {
+ipcMain.on('update-settings', function (event, newSettings) {
   const showError = (message) => mainWindow.webContents.send('show-message', 'error', message);
 
   if (newSettings.inputPortID < 0) return showError('invalid-input-port');
@@ -395,7 +392,7 @@ const displaySettings = function () {
 };
 
 // Window has requested the current settings
-ipcMain.on('request-settings', (event) => {
+ipcMain.on('request-settings', function (event) {
   displaySettings();
 });
 
@@ -409,7 +406,7 @@ const updateSettingsFromRestart = function () {
   // Locate the saved MIDI input port from its name
   let newInputPortID = 0;
 
-  inputPortList.forEach(function (name, id) {
+  inputPortList.forEach((name, id) => {
     if (name === settingsState.inputPortName) {
       newInputPortID = id;
     }
@@ -421,7 +418,7 @@ const updateSettingsFromRestart = function () {
   // Locate the saved MIDI output port from its name
   let newOutputPortID = 0;
 
-  outputPortList.forEach(function (name, id) {
+  outputPortList.forEach((name, id) => {
     if (name === settingsState.outputPortName) {
       newOutputPortID = id;
     }
@@ -519,18 +516,20 @@ let input = null; // MIDI Input object
 let output = null; // MIDI Output object
 
 const handleMIDIPortError = function (errCode) {
-  let errDesc = `Unknown Error`;
+  let errDesc = 'Unknown Error';
 
   if (errCode === 301) {
     let inPortName = settingsState.inputPortName || '(no port)';
 
-    errDesc =  `Can't open connection to the Input MIDI Port "${inPortName}". This is most likely because the MIDI device has been unplugged.`;
+    errDesc = `Can't open connection to the Input MIDI Port "${inPortName}".`;
 
   } else if (errCode === 302) {
     let outPortName = settingsState.outputPortName || '(no port)';
 
-    errDesc =  `Can't open connection to Output MIDI Port "${outPortName}". This is most likely because the MIDI device has been unplugged.`;
+    errDesc = `Can't open connection to Output MIDI Port "${outPortName}".`;
   }
+
+  errDesc += 'This is most likely because the MIDI device has been unplugged.';
 
   dialog.showMessageBoxSync({
     type: 'error',

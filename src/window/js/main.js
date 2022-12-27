@@ -3,6 +3,10 @@
   Copyright 2022 Luc DeTellis
 */
 
+/* ================================================= */
+/*  CONSTANTS                                        */
+/* ================================================= */
+
 const MESSAGE_HIDE_DELAY = 2000;
 
 const RESTART_MSG = 'Please try restarting MIDIsync';
@@ -19,16 +23,20 @@ const MESSAGES = {
   'cuelist-outofrange': 'Cuelist must be between 1 and 99999',
 };
 
+/* ================================================= */
+/*  MESSAGES                                         */
+/* ================================================= */
+
 let messageTimeout = null;
 
-function forceHideMessage () {
+const forceHideMessage = function () {
   $('message').classList.remove('show');
 
   // Prevent any future messages from being hidden
   if (messageTimeout) clearTimeout(messageTimeout);
-}
+};
 
-electronAPI.onShowMessage((event, type, message) => {
+electronAPI.onShowMessage(function (event, type, message) {
   // message can be a message ID or HTML content itself
   let content = MESSAGES[message];
   if (!content) content = message;
@@ -45,7 +53,15 @@ electronAPI.onShowMessage((event, type, message) => {
   }, MESSAGE_HIDE_DELAY);
 });
 
-electronAPI.onDisplaySettings((event, settings, portLists) => {
+/* ================================================= */
+/*  SETTINGS                                         */
+/* ================================================= */
+
+/* ======================== */
+/*  DISPLAY SETTINGS        */
+/* ======================== */
+
+electronAPI.onDisplaySettings(function (event, settings, portLists) {
   // Match each input port ID to each input port name
   let inOptions = portLists.inputPortList.map((name, id) => ({
     id: id,
@@ -111,11 +127,19 @@ electronAPI.onDisplaySettings((event, settings, portLists) => {
   }
 });
 
-function requestSettings () {
-  electronAPI.requestSettings();
-}
+/* ======================== */
+/*  REQUEST SETTINGS        */
+/* ======================== */
 
-function sendSettings () {
+const requestSettings = function () {
+  electronAPI.requestSettings();
+};
+
+/* ======================== */
+/*  SEND SETTINGS           */
+/* ======================== */
+
+const sendSettings = function () {
   let inputPortID = parseInt($('inputPortID').value);
   let outputPortID = parseInt($('outputPortID').value);
 
@@ -135,7 +159,11 @@ function sendSettings () {
     deviceID,
     cuelist
   });
-}
+};
+
+/* ================================================= */
+/*  INIT                                             */
+/* ================================================= */
 
 window.addEventListener('load', function () {
 
@@ -146,7 +174,7 @@ window.addEventListener('load', function () {
 
   // Listeners for settings buttons
   $('send-btn').addEventListener('click', sendSettings);
-  $('cancel-btn').addEventListener('click', () => {
+  $('cancel-btn').addEventListener('click', function () {
     requestSettings();
     forceHideMessage();
   });
