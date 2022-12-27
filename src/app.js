@@ -371,7 +371,7 @@ const updateSettings = function (newSettings) {
 
 // Update settings from window
 ipcMain.on('update-settings', (event, newSettings) => {
-  const showError = () => mainWindow.webContents.send('show-message', 'error', message);
+  const showError = (message) => mainWindow.webContents.send('show-message', 'error', message);
 
   if (newSettings.inputPortID < 0) return showError('invalid-input-port');
   if (newSettings.outputPortID < 0) return showError('invalid-output-port');
