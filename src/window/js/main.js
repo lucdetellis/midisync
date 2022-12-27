@@ -21,6 +21,13 @@ const MESSAGES = {
 
 let messageTimeout = null;
 
+function forceHideMessage () {
+  $('message').classList.remove('show');
+
+  // Prevent any future messages from being hidden
+  if (messageTimeout) clearTimeout(messageTimeout);
+}
+
 electronAPI.onShowMessage((event, type, message) => {
   // message can be a message ID or HTML content itself
   let content = MESSAGES[message];
@@ -139,7 +146,10 @@ window.addEventListener('load', function () {
 
   // Listeners for settings buttons
   $('send-btn').addEventListener('click', sendSettings);
-  $('cancel-btn').addEventListener('click', requestSettings);
+  $('cancel-btn').addEventListener('click', () => {
+    requestSettings();
+    forceHideMessage();
+  });
 
   // Request the current settings
   requestSettings();
